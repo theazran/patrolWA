@@ -1,0 +1,32 @@
+{
+  "name": "patrolwa",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theazran/patrolWA.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/theazran/patrolWA/issues"
+  },
+  "homepage": "https://github.com/theazran/patrolWA#readme",
+  "dependencies": {
+    "@adiwajshing/keyed-db": "^0.2.4",
+    "@hapi/boom": "^10.0.0",
+    "@whiskeysockets/baileys": "^6.2.1",
+    "dotenv": "^16.0.3",
+    "fs": "^0.0.1-security",
+    "node-fetch": "^2.7.0",
+    "pdf-creator-node": "^2.3.5",
+    "qrcode-terminal": "^0.12.0",
+    "request": "^2.88.2"
+  }
+}
