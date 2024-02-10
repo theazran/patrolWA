@@ -105,7 +105,7 @@ async function run() {
                     const data = await response.json();
 
                     const filteredData = data.filter(entry => {
-                        const entryMonth = new Date(entry.timestamp).getMonth() + 1; // Months are zero-based, so add 1
+                        const entryMonth = new Date(entry.timestamp).getMonth() + 1;
                         return entryMonth === month;
                     });
 
