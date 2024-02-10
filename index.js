@@ -3,15 +3,15 @@ const {
     default: makeWASocket,
     useMultiFileAuthState,
     DisconnectReason,
-    generateForwardMessageContent,
+    downloadContentFromMessage,
     delay,
+    isJidGroup
 } = require("@whiskeysockets/baileys");
-const idApp = `https://script.google.com/macros/s/AKfycbzLAqrB3EDuOomueHyZFPaPQy2OfVnvbsyBABPCMYe9Hf4Loqsh-LYlaXOMApQEs8eI4Q/exec?`
-const logger = require("pino")({ level: "silent" });
-const { Boom } = require("@hapi/boom");
 require('dotenv').config()
 const fs = require("fs");
-
+const logger = require("pino")({ level: "silent" });
+const { Boom } = require("@hapi/boom");
+const idApp = `https://script.google.com/macros/s/${process.env.ID_SPREADSHEET}/exec?`
 async function run() {
     const { state, saveCreds } = await useMultiFileAuthState("sessions");
     const client = makeWASocket({
@@ -67,11 +67,25 @@ async function run() {
                                                 m.message.buttonsResponseMessage.selectedButtonId ||
                                                 m.text
                                                 : "";
+            const isMedia = (type === 'imageMessage' || type === 'videoMessage')
+            const isQuotedImage = type === 'extendedTextMessage' && content.includes('imageMessage')
             global.reply = async (text) => {
                 await client.sendPresenceUpdate("composing", from);
                 return client.sendMessage(from, { text }, { quoted: m });
             };
 
+            client.downloadMediaMessage = downloadMediaMessage
+            async function downloadMediaMessage(message) {
+                let mimes = (message.msg || message).mimetype || ''
+                let messageType = mimes.split('/')[0].replace('application', 'document') ? mimes.split('/')[0].replace('application', 'document') : mimes.split('/')[0]
+                let extension = mimes.split('/')[1]
+                const stream = await downloadContentFromMessage(message, messageType)
+                let buffer = Buffer.from([])
+                for await (const chunk of stream) {
+                    buffer = Buffer.concat([buffer, chunk])
+                }
+                return buffer
+            }
 
             global.prefix = /^[./~!#%^&+=\-,;:()]/.test(body) ? body.match(/^[./~!#%^&+=\-,;:()]/gi) : '#'
 
@@ -82,13 +96,13 @@ async function run() {
             const cmd = isCmd ? body.slice(1).trim().split(/ +/).shift().toLocaleLowerCase() : null
             let url = args.length !== 0 ? args[0] : ''
             let pushname = m.pushName
-            console.log(from)
 
+            const isGroupMsg = isJidGroup(from)
+            const groupId = isGroupMsg ? from : ''
+            if (isGroupMsg) return
             async function fetchSheetDataByMonth(month) {
-                const url = 'https://opensheet.elk.sh/1kwsvHO00ZOZj3kJ-MkFeJSNzy0k0EfKHpU8X8RlOv8M/Sheet1';
-
                 try {
-                    const response = await fetch(url);
+                    const response = await fetch(idApp);
                     const data = await response.json();
 
                     const filteredData = data.filter(entry => {
@@ -106,8 +120,14 @@ async function run() {
                     console.error(`Error fetching data: ${error.message}`);
                 }
             }
+
             try {
-                if (cmd === "masuk" || cmd === "keluar") {
+                if (type === "imageMessage") {
+                    const message = isQuotedImage ? m.quoted : m.message.imageMessage
+                    const buff = await client.downloadMediaMessage(message)
+                    console.log(message)
+
+                } else if (cmd === "masuk" || cmd === "keluar") {
                     if (args < 1) return reply('contoh: /' + cmd + ' Asran, Pasang Spanduk');
 
                     const ran = arg.split('#');
