@@ -171,7 +171,7 @@ async function run() {
                         await reply('Fitur ini hanya dapat digunakan oleh security');
                     }
                 } else if (cmd === "laporan") {
-                    await fetchSheetDataByMonth(arg);
+                    await reply('Dalam proses pengembangan!')
                 } else {
                     const availableCommands = 'Perintah yang dapat digunakan:\n/masuk = Masuk Kantor\n/keluar = Keluar Kantor\n/laporan = Laporan Bulanan';
                     await reply(`Perintah tidak dikenali. ${availableCommands}`);
