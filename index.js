@@ -141,7 +141,7 @@ async function run() {
                     }
                     const allowedUsers = [
                         { Nama: 'M. Asran', WA: '6285255646434' },
-                        { Nama: 'Sec', WA: '6285255646333' }
+                        { Nama: 'Security', WA: '6285255646333' }
                     ];
                     const senderWA = from.split('@')[0];
 
