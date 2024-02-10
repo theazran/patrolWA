@@ -39,7 +39,6 @@ async function run() {
     });
     //   save creds
     client.ev.on("creds.update", saveCreds);
-
     client.ev.on("messages.upsert", async (msg) => {
         try {
             if (!msg.messages) return;
