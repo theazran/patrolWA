@@ -12,6 +12,7 @@ const fs = require("fs");
 const logger = require("pino")({ level: "silent" });
 const { Boom } = require("@hapi/boom");
 const idApp = `https://script.google.com/macros/s/${process.env.ID_SPREADSHEET}/exec?`
+console.log(process.env.ID_SPREADSHEET)
 async function run() {
     const { state, saveCreds } = await useMultiFileAuthState("sessions");
     const client = makeWASocket({
@@ -98,6 +99,7 @@ async function run() {
 
             const isGroupMsg = isJidGroup(from)
             const groupId = isGroupMsg ? from : ''
+            console.log(groupId)
             if (isGroupMsg) return
             async function fetchSheetDataByMonth(month) {
                 try {
@@ -120,6 +122,94 @@ async function run() {
                 }
             }
 
+            // pdf
+            const axios = require('axios');
+            const fs = require('fs');
+            const pdf = require('html-pdf');
+
+            async function fetchData() {
+                try {
+                    const response = await axios.get('https://opensheet.elk.sh/1kwsvHO00ZOZj3kJ-MkFeJSNzy0k0EfKHpU8X8RlOv8M/Sheet1');
+                    return response.data;
+                } catch (error) {
+                    console.error('Error fetching data:', error.message);
+                    throw error;
+                }
+            }
+
+            async function filterDataByMonth(data, targetMonth) {
+                const filteredData = data.filter(entry => {
+                    const entryMonth = entry.timestamp.split('/')[1];
+                    return entryMonth === targetMonth;
+                });
+
+                return filteredData;
+            }
+
+            async function generatePDF(data, targetMonth) {
+                const monthNames = [
+                    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+                ];
+
+                global.monthTitle = monthNames[parseInt(targetMonth, 10) - 1];
+
+                const tableRows = data.map(entry => `
+                    <tr>
+                    <td>${entry.timestamp}</td>
+                    <td>${entry.Keluar_Masuk}</td>
+                    <td>${entry.Nama}</td>
+                    <td>${entry.Keperluan}</td>
+                    <td>${entry.Petugas}</td>
+                    <td>${entry.WA}</td>
+                    </tr>
+                `);
+
+                const htmlTemplate = `
+                    <html>
+                    <head>
+                        <title>LAPORAN SATPAN</title>
+                        <style>
+                        table {
+                            border-collapse: collapse;
+                            width: 100%;
+                        }
+                        th, td {
+                            border: 1px solid black;
+                            padding: 8px;
+                            text-align: left;
+                        }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>Laporan Bulan ${monthTitle}</h1>
+                        <table>
+                        <thead>
+                            <tr>
+                            <th>Tanggal dan Waktu</th>
+                            <th>Keluar/Masuk</th>
+                            <th>Nama</th>
+                            <th>Keperluan</th>
+                            <th>Petugas</th>
+                            <th>WA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows.join('')}
+                        </tbody>
+                        </table>
+                    </body>
+                    </html>
+                `;
+
+                const pdfOptions = { format: 'Letter' };
+                pdf.create(htmlTemplate, pdfOptions).toFile(`laporan_bulan_${monthTitle}.pdf`, (err, res) => {
+                    if (err) return console.error(err);
+                    console.log('PDF file generated successfully.');
+                });
+            }
+            // end  of pdf
+
             try {
                 if (type === "imageMessage") {
                     const message = isQuotedImage ? m.quoted : m.message.imageMessage
@@ -127,8 +217,7 @@ async function run() {
                     console.log(message)
 
                 } else if (cmd === "masuk" || cmd === "keluar") {
-                    if (args < 1) return reply('contoh: /' + cmd + ' Asran, Pasang Spanduk');
-
+                    if (args < 1) return reply('contoh: /' + cmd + ' Asran#Pasang Spanduk');
                     const ran = arg.split('#');
                     if (cmd === "masuk") {
                         if (ran.length !== 2) {
@@ -140,13 +229,11 @@ async function run() {
                         }
                     }
                     const allowedUsers = [
-                        { Nama: 'M. Asran', WA: '6285255646434' },
+                        { Nama: 'Security', WA: '6285255646434' },
                         { Nama: 'Security', WA: '6285255646333' }
                     ];
                     const senderWA = from.split('@')[0];
-
                     const allowedUser = allowedUsers.find(user => user.WA === senderWA);
-
                     if (allowedUser) {
                         const data = {
                             Petugas: allowedUser.Nama,
@@ -155,14 +242,12 @@ async function run() {
                             'Keluar_Masuk': cmd === "masuk" ? "Masuk" : "Keluar",
                             WA: senderWA
                         };
-
-                        console.log(data);
-
+                        // console.log(data);
                         const res = await fetch(idApp + querystring.stringify(data), { method: "POST" });
                         const respon = await res.json();
 
                         if (respon.result === "success") {
-                            await client.sendMessage("120363230010661540@g.us", {
+                            await client.sendMessage("120363256542098102@g.us", {
                                 text: `⚠️ _*LAPORAN BARU*_\n\n*${cmd.toUpperCase()} KANTOR*\nNama: ${ran[0]}\nKeperluan: ${ran[1]}\n\n\nTertanda,\n${allowedUser.Nama}`
                             })
                             await reply(`Data Berhasil disimpan!\n\n*${cmd.toUpperCase()} KANTOR*\nNama: ${ran[0]}\nKeperluan: ${ran[1]}\nPetugas: ${allowedUser.Nama}`);
@@ -171,7 +256,25 @@ async function run() {
                         await reply('Fitur ini hanya dapat digunakan oleh security');
                     }
                 } else if (cmd === "laporan") {
-                    await reply('Dalam proses pengembangan!')
+                    if (args.length < 1) {
+                        return reply(`Untuk melihat laporan, ketik ${prefix}laporan 03`);
+                    }
+                    const targetMonth = arg;
+                    await reply('Mohon tunggu sebentar!');
+
+                    try {
+                        const rawData = await fetchData();
+                        const filteredData = await filterDataByMonth(rawData, targetMonth);
+                        const pdfPath = await generatePDF(filteredData, targetMonth);
+                        const pdfFileName = `laporan_bulan_${monthTitle}.pdf`;
+                        setTimeout(async () => {
+                            console.log('PDF file sent to WhatsApp successfully.');
+                            await sendFile(from, pdfFileName, pdfFileName, 'application/pdf');
+                        }, 5000);
+                    } catch (error) {
+                        console.error('An error occurred:', error.message);
+                        await reply('Terjadi kesalahan saat memproses laporan. Harap coba lagi!');
+                    }
                 } else {
                     const availableCommands = 'Perintah yang dapat digunakan:\n/masuk = Masuk Kantor\n/keluar = Keluar Kantor\n/laporan = Laporan Bulanan';
                     await reply(`Perintah tidak dikenali. ${availableCommands}`);
@@ -183,6 +286,17 @@ async function run() {
             console.log(error);
         }
     });
+    async function sendFile(jid, path, fileName, mimetype = '', quoted = '', options = {}) {
+        return await client.sendMessage(jid, { document: { url: path }, mimetype, fileName, ...options }, { quoted })
+            .then(() => {
+                try {
+                    fs.unlinkSync(path)
+                } catch (error) {
+                    console.log(error);
+                }
+            })
+    }
+
 }
 
 // running bot

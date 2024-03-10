@@ -24,9 +24,16 @@
     "@whiskeysockets/baileys": "^6.2.1",
     "dotenv": "^16.0.3",
     "fs": "^0.0.1-security",
+    "json-to-pdf": "^0.1.2",
+    "jspdf": "^2.5.1",
+    "moment": "^2.30.1",
     "node-fetch": "^2.7.0",
     "pdf-creator-node": "^2.3.5",
+    "pdf-lib": "^1.17.1",
+    "pdfkit": "^0.14.0",
+    "pdfmake": "^0.2.10",
     "qrcode-terminal": "^0.12.0",
-    "request": "^2.88.2"
+    "request": "^2.88.2",
+    "table": "^6.8.1"
   }
 }
